@@ -1,0 +1,2242 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Bot Control Console</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    :root {
+      --panel: #1b1f2a;
+      --active: #00c853;
+      --danger: #e53935;
+      --warn: #ffb300;
+      --text: #eaeaea;
+      --cyan: #00e5ff;
+      --purple: #b388ff;
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: radial-gradient(circle at top, #1a1f2b, #0b0d12);
+      color: var(--text);
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: 100vh;
+    }
+
+    @media(max-width:900px) {
+      .app {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .panel {
+      background: linear-gradient(180deg, #1c2230, #141821);
+      border-radius: 16px;
+      padding: 16px;
+      margin: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+    }
+
+    .sidebar h2 {
+      font-size: 17px;
+      margin: 10px 0
+    }
+
+    .modeBtn {
+      width: 100%;
+      padding: 12px;
+      margin: 6px 0;
+      border: none;
+      border-radius: 12px;
+      background: #2a2f3e;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .modeBtn.active {
+      background: var(--active);
+      color: #000;
+      font-weight: 600;
+    }
+
+    .infoRow {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, .08);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+      background: var(--danger);
+    }
+
+    .dot.connected {
+      background: var(--active);
+      animation: blink 1.5s infinite;
+    }
+
+    @keyframes blink {
+      50% {
+        opacity: .4
+      }
+    }
+
+    @keyframes pulseRed {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.3;
+      }
+    }
+
+    @keyframes glowPulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 8px currentColor;
+      }
+
+      50% {
+        box-shadow: 0 0 20px currentColor, 0 0 30px currentColor;
+      }
+    }
+
+    .switch {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 12px 0;
+      font-size: 14px;
+      cursor: pointer;
+      user-select: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .switch input {
+      display: none;
+    }
+
+    .slider {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background-color: #2a2f3e;
+      border-radius: 24px;
+      transition: 0.3s;
+      flex-shrink: 0;
+    }
+
+    .slider:before {
+      content: "";
+      position: absolute;
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: #889;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    input:checked+.slider {
+      background-color: var(--cyan);
+    }
+
+    input:checked+.slider:before {
+      transform: translateX(20px);
+      background-color: #0b0d12;
+    }
+
+    input:disabled+.slider {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .switch-label {
+      flex-grow: 1;
+      text-align: left;
+    }
+
+    .header h1 {
+      margin: 0 0 8px;
+      font-size: 20px;
+      text-align: center;
+    }
+
+    #runBtn {
+      width: 100%;
+      max-width: 320px;
+      margin: 10px auto 28px;
+      display: block;
+      padding: 12px;
+      border: none;
+      border-radius: 12px;
+      background: #2a2f3e;
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+
+    #runBtn.running {
+      background: var(--danger);
+      color: white;
+    }
+
+    #runBtn:hover {
+      transform: scale(1.02);
+    }
+
+    #radar {
+      display: none;
+      margin: 16px auto;
+      width: 100%;
+      max-width: 340px;
+      background: radial-gradient(ellipse at 50% 100%, #021a1a, #010d0d, #000);
+      border-radius: 16px;
+      border: 1px solid rgba(0, 229, 255, 0.12);
+      box-shadow: 0 0 20px rgba(0, 229, 255, 0.06), inset 0 0 30px rgba(0, 0, 0, 0.5);
+    }
+
+    /* ============ LINE FOLLOW PANEL ============ */
+    #lineFollowPanel {
+      display: none;
+      margin: 16px auto;
+      padding: 20px;
+      max-width: 400px;
+      background: linear-gradient(135deg, #0d1117, #161b22);
+      border: 1px solid rgba(0, 229, 255, 0.15);
+      border-radius: 16px;
+      text-align: center;
+    }
+
+    #lineFollowPanel h3 {
+      margin: 0 0 4px;
+      font-size: 15px;
+      color: var(--cyan);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .lf-subtitle {
+      font-size: 11px;
+      color: #667;
+      margin-bottom: 16px;
+    }
+
+    .lf-track {
+      position: relative;
+      width: 100%;
+      height: 80px;
+      margin: 0 auto 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lf-track-line {
+      position: absolute;
+      width: 70%;
+      height: 6px;
+      background: linear-gradient(90deg, transparent 0%, #333 15%, #555 50%, #333 85%, transparent 100%);
+      border-radius: 3px;
+      top: 50%;
+      left: 15%;
+      transform: translateY(-50%);
+    }
+
+    .lf-sensor-row {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .lf-sensor {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13px;
+      color: #fff;
+      background: #1a1e28;
+      border: 2px solid #333;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .lf-sensor.active {
+      background: linear-gradient(135deg, #00e5ff, #00b8d4);
+      border-color: #00e5ff;
+      color: #000;
+      box-shadow: 0 0 16px rgba(0, 229, 255, 0.6), 0 0 30px rgba(0, 229, 255, 0.2);
+      animation: glowPulse 1.5s ease-in-out infinite;
+    }
+
+    .lf-sensor .lf-label {
+      position: absolute;
+      bottom: -18px;
+      font-size: 10px;
+      color: #889;
+      font-weight: 400;
+    }
+
+    .lf-state {
+      margin-top: 20px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      display: inline-block;
+      background: rgba(0, 229, 255, 0.1);
+      color: var(--cyan);
+      border: 1px solid rgba(0, 229, 255, 0.2);
+      transition: all 0.3s;
+    }
+
+    .lf-state.lost {
+      background: rgba(229, 57, 53, 0.15);
+      color: #ff5252;
+      border-color: rgba(229, 57, 53, 0.3);
+      animation: pulseRed 0.8s infinite;
+    }
+
+    .lf-speed-control {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: rgba(0, 229, 255, 0.05);
+      border: 1px solid rgba(0, 229, 255, 0.1);
+      border-radius: 10px;
+    }
+
+    .lf-speed-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: #99a;
+    }
+
+    .lf-speed-val {
+      font-weight: 700;
+      color: var(--cyan);
+      font-size: 14px;
+    }
+
+    .lf-speed-slider {
+      width: 100%;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      background: linear-gradient(90deg, rgba(0, 229, 255, 0.15), rgba(0, 229, 255, 0.3));
+      outline: none;
+    }
+
+    .lf-speed-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--cyan);
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+    }
+
+    .lf-speed-slider::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--cyan);
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+    }
+
+    /* ============ OBJECT FOLLOW PANEL ============ */
+    #objFollowPanel {
+      display: none;
+      margin: 16px auto;
+      padding: 20px;
+      max-width: 400px;
+      background: linear-gradient(135deg, #0d1117, #161b22);
+      border: 1px solid rgba(179, 136, 255, 0.15);
+      border-radius: 16px;
+      text-align: center;
+    }
+
+    #objFollowPanel h3 {
+      margin: 0 0 4px;
+      font-size: 15px;
+      color: var(--purple);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .of-subtitle {
+      font-size: 11px;
+      color: #667;
+      margin-bottom: 16px;
+    }
+
+    .of-gauge-wrap {
+      position: relative;
+      width: 200px;
+      height: 110px;
+      margin: 0 auto 8px;
+    }
+
+    .of-gauge-canvas {
+      width: 200px;
+      height: 110px;
+    }
+
+    .of-dist-label {
+      position: absolute;
+      bottom: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 0 8px rgba(179, 136, 255, 0.5);
+    }
+
+    .of-dist-unit {
+      font-size: 12px;
+      font-weight: 400;
+      color: #99a;
+    }
+
+    .of-ir-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 40px;
+      margin: 16px 0 8px;
+    }
+
+    .of-ir-indicator {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .of-ir-orb {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #1a1e28;
+      border: 2px solid #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+
+    .of-ir-orb.detected {
+      background: linear-gradient(135deg, #ff5252, #d32f2f);
+      border-color: #ff5252;
+      box-shadow: 0 0 14px rgba(255, 82, 82, 0.6), 0 0 28px rgba(255, 82, 82, 0.2);
+      animation: glowPulse 1.2s ease-in-out infinite;
+    }
+
+    .of-ir-label {
+      font-size: 11px;
+      color: #889;
+    }
+
+    .of-robot-icon {
+      font-size: 28px;
+      opacity: 0.6;
+    }
+
+    .of-state {
+      margin-top: 12px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      display: inline-block;
+      background: rgba(179, 136, 255, 0.1);
+      color: var(--purple);
+      border: 1px solid rgba(179, 136, 255, 0.2);
+      transition: all 0.3s;
+    }
+
+    .of-state.tracking {
+      background: rgba(0, 200, 83, 0.1);
+      color: var(--active);
+      border-color: rgba(0, 200, 83, 0.3);
+    }
+
+    .of-state.lost {
+      background: rgba(229, 57, 53, 0.15);
+      color: #ff5252;
+      border-color: rgba(229, 57, 53, 0.3);
+    }
+
+    /* ============ OBSTACLE AVOID PANEL ============ */
+    #obsAvoidPanel {
+      display: none;
+      margin: 16px auto;
+      padding: 20px;
+      max-width: 400px;
+      background: linear-gradient(135deg, #0d1117, #161b22);
+      border: 1px solid rgba(255, 179, 0, 0.15);
+      border-radius: 16px;
+      text-align: center;
+    }
+
+    #obsAvoidPanel h3 {
+      margin: 0 0 4px;
+      font-size: 15px;
+      color: var(--warn);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .oa-subtitle {
+      font-size: 11px;
+      color: #667;
+      margin-bottom: 20px;
+    }
+
+    .oa-sensors-wrap {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-bottom: 20px;
+    }
+
+    .oa-sensor {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 60px;
+    }
+
+    .oa-bar-container {
+      width: 24px;
+      height: 100px;
+      background: #1a1e28;
+      border-radius: 12px;
+      border: 2px solid #333;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .oa-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 0%;
+      background: #00c853;
+      transition: height 0.3s ease, background 0.3s ease;
+    }
+
+    .oa-dist {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 2px;
+    }
+
+    .oa-label {
+      font-size: 10px;
+      color: #889;
+      font-weight: 600;
+    }
+
+    .oa-state {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      display: inline-block;
+      background: rgba(255, 179, 0, 0.1);
+      color: var(--warn);
+      border: 1px solid rgba(255, 179, 0, 0.2);
+    }
+
+    /* ============ D-PAD & CONTROLS ============ */
+    #pcControl,
+    #phoneControl {
+      display: none;
+      justify-content: center;
+    }
+
+    .dpad {
+      display: grid;
+      grid-template-columns: 80px 80px 80px;
+      grid-template-rows: 80px 80px 80px;
+      gap: 12px;
+    }
+
+    .arrow {
+      background: linear-gradient(180deg, #3a8dff, #1c5fc4);
+      border-radius: 18px;
+      font-size: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+
+    .arrow span {
+      position: absolute;
+      bottom: 6px;
+      right: 10px;
+      font-size: 11px;
+    }
+
+    .arrow.active {
+      background: linear-gradient(180deg, #3cff87, #00c853);
+      color: #000;
+      transform: scale(0.95);
+    }
+
+    .arrow:hover {
+      transform: scale(1.02);
+    }
+
+    .empty {
+      background: transparent
+    }
+
+    #joystick {
+      width: 220px;
+      height: 220px;
+      margin: 20px auto;
+      background: radial-gradient(circle, #444, #222);
+      border-radius: 50%;
+      position: relative;
+      border: 3px solid #555;
+      touch-action: none;
+    }
+
+    #stick {
+      width: 70px;
+      height: 70px;
+      background: radial-gradient(circle, #3cff87, #00c853);
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 10px rgba(60, 255, 135, 0.6);
+    }
+
+    #hold {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      display: none;
+      z-index: 1000;
+    }
+
+    #holdBtn {
+      width: 78px;
+      height: 78px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #ffd54f, #ffb300);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(255, 179, 0, 0.4);
+    }
+
+    #holdBtn:hover {
+      transform: scale(1.08);
+    }
+
+    #hold.active #holdBtn {
+      background: radial-gradient(circle, #81c784, #00c853);
+      box-shadow: 0 4px 12px rgba(0, 200, 83, 0.4);
+    }
+
+    @media (max-width:900px) {
+      #hold {
+        left: auto;
+        right: 16px;
+        bottom: 16px;
+        transform: none;
+      }
+    }
+
+    /* ===== MANUAL RADAR PANEL ===== */
+    #manRadarPanel {
+      display: none;
+      margin: 10px auto;
+      max-width: 340px;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(0,229,255,0.2);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    #manRadarPanel .mr-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    #manRadarPanel .mr-title {
+      font-size: 12px;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    #manRadarPanel .mr-dist {
+      font-size: 22px;
+      font-weight: 700;
+      color: #00e5ff;
+      text-align: center;
+      margin: 6px 0 4px;
+      letter-spacing: 2px;
+    }
+    #manRadarPanel .mr-dist span {
+      font-size: 12px;
+      color: #aaa;
+      margin-left: 4px;
+    }
+    #manRadarPanel .mr-angle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    #manRadarPanel .mr-angle-lbl {
+      font-size: 12px;
+      color: #aaa;
+      min-width: 32px;
+      text-align: right;
+    }
+    #manRadarPanel input[type=range] {
+      flex: 1;
+      accent-color: var(--cyan);
+    }
+    #manRadarBtn {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--cyan);
+      background: transparent;
+      color: var(--cyan);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #manRadarBtn.active {
+      background: var(--cyan);
+      color: #000;
+    }
+
+    /* ===== MOTION INDICATOR ===== */
+    #motionWidget {
+      margin: 14px 0;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(0,229,255,0.15);
+      border-radius: 12px;
+      padding: 14px 10px 10px;
+    }
+    #motionWidget h3 {
+      font-size: 12px;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 0 0 10px;
+      text-align: center;
+    }
+    .mot-compass {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr 1fr;
+      gap: 4px;
+      width: 100px;
+      margin: 0 auto;
+    }
+    .mot-arrow {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      transition: all 0.2s ease;
+      color: #555;
+    }
+    .mot-arrow.active {
+      background: rgba(0,229,255,0.18);
+      border-color: var(--cyan);
+      color: var(--cyan);
+      box-shadow: 0 0 12px rgba(0,229,255,0.4);
+    }
+    .mot-arrow.active-red {
+      background: rgba(255,82,82,0.18);
+      border-color: #ff5252;
+      color: #ff5252;
+      box-shadow: 0 0 12px rgba(255,82,82,0.4);
+    }
+    .mot-arrow.active-yel {
+      background: rgba(255,213,79,0.18);
+      border-color: #ffd54f;
+      color: #ffd54f;
+      box-shadow: 0 0 12px rgba(255,213,79,0.4);
+    }
+    #motLabel {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-top: 8px;
+      color: #aaa;
+      transition: color 0.2s;
+    }
+    .gyro-bars {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      align-items: flex-end;
+      justify-content: center;
+      height: 32px;
+    }
+    .gyro-bar-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .gyro-bar-track {
+      width: 16px;
+      height: 28px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+      align-items: flex-end;
+    }
+    .gyro-bar-fill {
+      width: 100%;
+      border-radius: 4px;
+      transition: height 0.15s ease, background 0.15s ease;
+    }
+    .gyro-bar-lbl {
+      font-size: 9px;
+      color: #777;
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- SIDEBAR -->
+    <div class="panel sidebar">
+      <h2>Status</h2>
+      <div class="infoRow">
+        <span>Connection</span>
+        <span><span id="dot" class="dot"></span><span id="connText">DISCONNECTED</span></span>
+      </div>
+      <div class="infoRow"><span>Robot</span><span id="runState">STOPPED</span></div>
+
+      <h2>Operating Mode</h2>
+      <button class="modeBtn" onclick="selectMode(this,1)">Manual</button>
+      <button class="modeBtn" onclick="selectMode(this,2)">Obstacle Avoidance</button>
+      <button class="modeBtn" onclick="selectMode(this,3)">Line Following</button>
+      <button class="modeBtn" onclick="selectMode(this,4)">Object Following</button>
+
+      <h2>System Info</h2>
+      <div class="infoRow"><span>Tilt</span><span id="tilt">0°</span></div>
+      <div class="infoRow"><span>Acceleration</span><span id="acc">0</span></div>
+      <div class="infoRow"><span>Temperature</span><span id="temp">--</span></div>
+      <div class="infoRow"><span>Battery</span><span id="bat">--</span></div>
+
+      <h2>Interface</h2>
+
+      <!-- MOTION INDICATOR WIDGET -->
+      <div id="motionWidget">
+        <h3>🧭 Motion State</h3>
+        <div class="mot-compass">
+          <div></div>
+          <div class="mot-arrow" id="mot-fwd">▲</div>
+          <div></div>
+          <div class="mot-arrow" id="mot-ccw">↺</div>
+          <div style="width:30px;height:30px;"></div>
+          <div class="mot-arrow" id="mot-cw">↻</div>
+          <div></div>
+          <div class="mot-arrow" id="mot-bwd">▼</div>
+          <div></div>
+        </div>
+        <div id="motLabel">IDLE</div>
+        <!-- Gyro bars -->
+        <div class="gyro-bars">
+          <div class="gyro-bar-wrap">
+            <div class="gyro-bar-track"><div class="gyro-bar-fill" id="gyroBarX" style="height:0%;background:#00e5ff;"></div></div>
+            <div class="gyro-bar-lbl">GX</div>
+          </div>
+          <div class="gyro-bar-wrap">
+            <div class="gyro-bar-track"><div class="gyro-bar-fill" id="gyroBarY" style="height:0%;background:#69ff47;"></div></div>
+            <div class="gyro-bar-lbl">GY</div>
+          </div>
+          <div class="gyro-bar-wrap">
+            <div class="gyro-bar-track"><div class="gyro-bar-fill" id="gyroBarZ" style="height:0%;background:#ffd54f;"></div></div>
+            <div class="gyro-bar-lbl">GZ</div>
+          </div>
+        </div>
+      </div>
+      <label class="switch">
+        <span class="switch-label">Show W-A-S-D</span>
+        <input type="checkbox" id="wasdToggle" checked>
+        <span class="slider"></span>
+      </label>
+      <label class="switch" id="radarToggleContainer">
+        <span class="switch-label">Show Radar</span>
+        <input type="checkbox" id="radarToggle">
+        <span class="slider"></span>
+      </label>
+      <label class="switch">
+        <span class="switch-label">Phone Control</span>
+        <input type="checkbox" id="uiToggle">
+        <span class="slider"></span>
+      </label>
+      <label class="switch">
+        <span class="switch-label">Telemetry Panel</span>
+        <input type="checkbox" id="telemetryToggle">
+        <span class="slider"></span>
+      </label>
+
+    </div>
+
+    <!-- MAIN -->
+    <div class="panel">
+      <div class="header">
+        <h1>🤖 Control Console</h1>
+      </div>
+
+      <button id="runBtn" class="modeBtn" onclick="toggleRun()">START</button>
+
+      <canvas id="radar" width="260" height="160"></canvas>
+
+      <!-- MANUAL RADAR CONTROL -->
+      <div id="manRadarPanel">
+        <div class="mr-header">
+          <span class="mr-title">🔭 Manual Scan</span>
+          <button id="manRadarBtn" onclick="toggleManualRadar()">Manual OFF</button>
+        </div>
+        <div class="mr-dist" id="manDistVal">--<span>cm</span></div>
+        <div class="mr-angle-row" id="manAngleRow" style="opacity:0.4; transition:opacity 0.3s;">
+          <span class="mr-angle-lbl" id="manAngleLbl">30&deg;</span>
+          <input type="range" id="manAngleSlider" min="30" max="150" value="150" disabled>
+        </div>
+      </div>
+
+      <!-- MASTER SPEED PANEL -->
+      <div id="masterSpeedPanel" style="display:none; margin: 16px auto; max-width: 340px;">
+        <div class="lf-speed-control">
+          <div class="lf-speed-header">
+            <span>⚡ Max Drive Speed</span>
+            <span class="lf-speed-val" id="masterSpeedVal">200</span>
+          </div>
+          <input type="range" class="lf-speed-slider" id="masterSpeedSlider" min="80" max="255" value="200">
+        </div>
+      </div>
+
+      <!-- LINE FOLLOWING PANEL -->
+      <div id="lineFollowPanel">
+        <h3>⟡ Line Tracking</h3>
+        <div class="lf-subtitle">IR Sensor Array</div>
+        <div class="lf-track">
+          <div class="lf-track-line"></div>
+          <div class="lf-sensor-row">
+            <div class="lf-sensor" id="lfLeft">L<span class="lf-label">LEFT</span></div>
+            <div class="lf-sensor" id="lfCenter">C<span class="lf-label">CENTER</span></div>
+            <div class="lf-sensor" id="lfRight">R<span class="lf-label">RIGHT</span></div>
+          </div>
+        </div>
+        <div class="lf-state" id="lfState">IDLE</div>
+
+      </div>
+
+      <!-- OBJECT FOLLOWING PANEL -->
+      <div id="objFollowPanel">
+        <h3>⟐ Object Tracking</h3>
+        <div class="of-subtitle">Ultrasonic + IR Proximity</div>
+
+        <div class="of-gauge-wrap">
+          <canvas class="of-gauge-canvas" id="ofGauge" width="200" height="110"></canvas>
+          <div class="of-dist-label"><span id="ofDistVal">--</span> <span class="of-dist-unit">cm</span></div>
+        </div>
+
+        <div class="of-ir-row">
+          <div class="of-ir-indicator">
+            <div class="of-ir-orb" id="ofIrLeft">◀</div>
+            <div class="of-ir-label">LEFT IR</div>
+          </div>
+          <div class="of-robot-icon">🤖</div>
+          <div class="of-ir-indicator">
+            <div class="of-ir-orb" id="ofIrRight">▶</div>
+            <div class="of-ir-label">RIGHT IR</div>
+          </div>
+        </div>
+
+        <div class="of-state" id="ofState">IDLE</div>
+
+      </div>
+
+      <!-- OBSTACLE AVOIDANCE PANEL -->
+      <div id="obsAvoidPanel">
+        <h3>⛐ Obstacle Avoidance</h3>
+        <div class="oa-subtitle">Proximity Sensors</div>
+
+        <div class="oa-sensors-wrap">
+          <div class="oa-sensor">
+            <div class="oa-bar-container">
+              <div class="oa-bar" id="oaBarL"></div>
+            </div>
+            <div class="oa-dist" id="oaDistL">--</div>
+            <div class="oa-label">LEFT</div>
+          </div>
+          <div class="oa-sensor">
+            <div class="oa-bar-container">
+              <div class="oa-bar" id="oaBarC"></div>
+            </div>
+            <div class="oa-dist" id="oaDistC">--</div>
+            <div class="oa-label">CENTER</div>
+          </div>
+          <div class="oa-sensor">
+            <div class="oa-bar-container">
+              <div class="oa-bar" id="oaBarR"></div>
+            </div>
+            <div class="oa-dist" id="oaDistR">--</div>
+            <div class="oa-label">RIGHT</div>
+          </div>
+        </div>
+        <div class="oa-state" id="oaState">IDLE</div>
+      </div>
+
+      <div id="pcControl">
+        <div class="dpad">
+          <div class="empty"></div>
+          <div class="arrow" id="up">▲<span>W</span></div>
+          <div class="empty"></div>
+          <div class="arrow" id="left">◀<span>A</span></div>
+          <div class="arrow" id="down">▼<span>S</span></div>
+          <div class="arrow" id="right">▶<span>D</span></div>
+        </div>
+      </div>
+
+      <div id="phoneControl">
+        <div id="joystick">
+          <div id="stick"></div>
+        </div>
+      </div>
+      <!-- DETAILED TELEMETRY PANEL -->
+      <div id="telemetryPanel"
+        style="display: none; margin: 30px auto; max-width: 800px; padding: 20px; background: rgba(10, 13, 19, 0.85); border-radius: 16px; border: 1px solid rgba(0, 229, 255, 0.2); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); backdrop-filter: blur(10px);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h3 style="color: var(--cyan); margin: 0; font-size: 15px; text-transform: uppercase; letter-spacing: 1px;">📡
+            Detailed Telemetry</h3>
+          <span id="telConnStatus" style="font-size: 12px; color: #ff5252; font-weight: bold;">DISCONNECTED</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <div style="font-size: 11px; color: #889; margin-bottom: 6px;">📥 INCOMING (Rx) - ESP32 State</div>
+            <pre id="rawTelemetryLog"
+              style="background: rgba(0, 0, 0, 0.4); padding: 12px; border-radius: 8px; font-family: 'Courier New', Courier, monospace; font-size: 12px; color: #a5d6a7; overflow-y: auto; height: 250px; margin: 0; white-space: pre-wrap; word-break: break-all;">Waiting for data...</pre>
+          </div>
+          <div>
+            <div style="font-size: 11px; color: #889; margin-bottom: 6px;">📤 OUTGOING (Tx) - UI Commands</div>
+            <pre id="txTelemetryLog"
+              style="background: rgba(0, 0, 0, 0.4); padding: 12px; border-radius: 8px; font-family: 'Courier New', Courier, monospace; font-size: 12px; color: #ffb74d; overflow-y: auto; height: 250px; margin: 0; white-space: pre-wrap; word-break: break-all;">No commands sent yet...</pre>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SAFE STOP -->
+  <div id="hold">
+    <div id="holdBtn">⏸</div>
+    <div>SAFE STOP</div>
+  </div>
+
+  <script>
+    /* ===================== DOM REFS ===================== */
+    const runBtn = document.getElementById("runBtn");
+    const txTelemetryLog = document.getElementById("txTelemetryLog");
+    const telConnStatus = document.getElementById("telConnStatus");
+    let txLogData = [];
+    const runState = document.getElementById("runState");
+    const holdBtn = document.getElementById("holdBtn");
+    const hold = document.getElementById("hold");
+    const pcControl = document.getElementById("pcControl");
+    const phoneControl = document.getElementById("phoneControl");
+    const uiToggle = document.getElementById("uiToggle");
+    const radarToggle = document.getElementById("radarToggle");
+    const wasdToggle = document.getElementById("wasdToggle");
+    const telemetryToggle = document.getElementById("telemetryToggle");
+    const telemetryPanel = document.getElementById("telemetryPanel");
+    const radar = document.getElementById("radar");
+    const dot = document.getElementById("dot");
+    const connText = document.getElementById("connText");
+    const tiltSpan = document.getElementById("tilt");
+    const accSpan = document.getElementById("acc");
+    const tempSpan = document.getElementById("temp");
+    const batSpan = document.getElementById("bat");
+    const gyroStrSpan = document.getElementById("gyroStr");
+
+    // Line follow panel
+    const lineFollowPanel = document.getElementById("lineFollowPanel");
+    const lfLeft = document.getElementById("lfLeft");
+    const lfCenter = document.getElementById("lfCenter");
+    const lfRight = document.getElementById("lfRight");
+    const lfState = document.getElementById("lfState");
+    // Master speed panel
+    const masterSpeedPanel = document.getElementById("masterSpeedPanel");
+    const masterSpeedSlider = document.getElementById("masterSpeedSlider");
+    const masterSpeedVal = document.getElementById("masterSpeedVal");
+
+    // Object follow panel
+    const objFollowPanel = document.getElementById("objFollowPanel");
+    const ofGauge = document.getElementById("ofGauge");
+    const ofDistVal = document.getElementById("ofDistVal");
+    const ofIrLeft = document.getElementById("ofIrLeft");
+    const ofIrRight = document.getElementById("ofIrRight");
+    const ofState = document.getElementById("ofState");
+
+    // Obstacle avoid panel
+    const obsAvoidPanel = document.getElementById("obsAvoidPanel");
+    const oaBarL = document.getElementById("oaBarL");
+    const oaBarC = document.getElementById("oaBarC");
+    const oaBarR = document.getElementById("oaBarR");
+    const oaDistL = document.getElementById("oaDistL");
+    const oaDistC = document.getElementById("oaDistC");
+    const oaDistR = document.getElementById("oaDistR");
+    const oaState = document.getElementById("oaState");
+
+    const arrowUp = document.getElementById("up");
+    const arrowLeft = document.getElementById("left");
+    const arrowDown = document.getElementById("down");
+    const arrowRight = document.getElementById("right");
+
+    /* ===================== STATE ===================== */
+    let selectedMode = 0;
+    let robotRunning = false;
+    let holdActive = false;
+    let ws = null;
+    let wsConnected = false;
+    let lastTelemetry = { tilt: 0, acc: 0, temp: 0, bat: 0, L: -1, C: -1, R: -1, irL: 0, irC: 0, irR: 0, irObjL: 0, irObjR: 0 };
+
+    /* ===================== WEBSOCKET ===================== */
+    // PING Keep-alive interval
+    setInterval(() => {
+      if (wsConnected && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send("PING");
+      }
+    }, 5000);
+
+    function initWebSocket() {
+      console.log("→ Connecting to WebSocket...");
+
+      const defaultHost = "10.164.67.164";
+      const wsHost = (location.hostname && location.hostname !== "127.0.0.1") ? location.hostname : defaultHost;
+      const wsUrl = `ws://${wsHost}/ws`;
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        wsConnected = true;
+        dot.classList.add("connected");
+        connText.textContent = "CONNECTED ✓";
+        if (telConnStatus) {
+          telConnStatus.textContent = "CONNECTED ✓";
+          telConnStatus.style.color = "#00c853";
+        }
+        console.log("✓ WebSocket connected!");
+      };
+
+      ws.onclose = () => {
+        wsConnected = false;
+        dot.classList.remove("connected");
+        connText.textContent = "DISCONNECTED ✗";
+        if (telConnStatus) {
+          telConnStatus.textContent = "DISCONNECTED ✗";
+          telConnStatus.style.color = "#ff5252";
+        }
+        console.log("✗ WebSocket closed, reconnecting in 2s...");
+        resetUIOnDisconnect();
+        setTimeout(initWebSocket, 2000);
+      };
+
+      ws.onerror = (e) => {
+        console.error("✗ WebSocket error:", e);
+        connText.textContent = "ERROR";
+        wsConnected = false;
+      };
+
+      ws.onmessage = (m) => {
+        let data = null;
+        try { data = JSON.parse(m.data); } catch (e) { return; }
+        if (!data) return;
+
+        lastTelemetry = data;
+
+        if ('tilt' in data) tiltSpan.textContent = data.tilt.toFixed(1) + "°";
+        if ('acc' in data) accSpan.textContent = data.acc.toFixed(2);
+        if ('gx' in data && 'gy' in data && 'gz' in data) {
+          // Gyro bars always update regardless of gyroStrSpan
+          updateGyroBars(data.gx, data.gy, data.gz);
+          if (gyroStrSpan) gyroStrSpan.textContent = `${data.gx.toFixed(1)}, ${data.gy.toFixed(1)}, ${data.gz.toFixed(1)}`;
+        }
+
+        // Temperature: subtract 20°C calibration offset
+        if ('temp' in data) {
+          let correctedTemp = (data.temp - 20);
+          tempSpan.textContent = correctedTemp.toFixed(1) + "°C";
+        }
+
+        // Battery voltage: multiply by 2.4 for correct divider ratio
+        if ('bat' in data) {
+          let correctedBat = (typeof data.bat === "number" && !isNaN(data.bat) && data.bat > 0) ? (data.bat * 2.4) : 0;
+          batSpan.textContent = correctedBat > 0 ? correctedBat.toFixed(2) + "V" : "--";
+        }
+
+        const logBox = document.getElementById("rawTelemetryLog");
+        if (logBox) {
+          const d = new Date();
+          const ms = d.getMilliseconds().toString().padStart(3, '0');
+          const ts = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}.${ms}`;
+          const line = `[${ts}] tilt=${data.tilt?.toFixed(1)}° acc=${data.acc?.toFixed(2)} gz=${data.gz?.toFixed(1)} bat=${data.bat?.toFixed(2)}V motL=${data.motL} motR=${data.motR} mode=${data.mode} run=${data.running}`;
+          const lines = logBox.textContent === "Waiting for data..." ? [] : logBox.textContent.split("\n");
+          lines.unshift(line);
+          if (lines.length > 40) lines.pop();
+          logBox.textContent = lines.join("\n");
+        }
+
+        if ('running' in data) {
+          robotRunning = !!data.running;
+          runBtn.textContent = robotRunning ? "STOP" : "START";
+          runBtn.classList.toggle("running", robotRunning);
+          runState.textContent = robotRunning ? "RUNNING" : "STOPPED";
+        }
+
+        if ('safe_stop' in data) {
+          holdActive = !!data.safe_stop;
+          hold.classList.toggle("active", holdActive);
+          holdBtn.textContent = holdActive ? "▶" : "⏸";
+        }
+
+        if ('mode' in data) {
+          selectedMode = Number(data.mode || 0);
+          document.querySelectorAll(".modeBtn").forEach((b, ix) => {
+            b.classList.toggle("active", (ix + 1) === selectedMode);
+          });
+          updateUI();
+        }
+
+        drawRadar(data.L, data.C, data.R, data.manDist, data.manAngle);
+        updateLineFollowPanel(data.irL, data.irC, data.irR);
+        updateObjFollowPanel(data.C, data.irObjL, data.irObjR);
+        updateObsAvoidPanel(data.L, data.C, data.R);
+        updateMotionIndicator(data.gy, data.gz, data.motL, data.motR);
+
+        if (manualRadarOn && 'manDist' in data) {
+          manDistVal.innerHTML = (data.manDist >= 0 ? data.manDist : "--") + "<span>cm</span>";
+        }
+
+        // Sync global speed to master slider
+        if ('gSpeed' in data) {
+          const spd = Number(data.gSpeed);
+          if (spd >= 80 && spd <= 255 && !gSliderDragging) {
+            masterSpeedSlider.value = spd;
+            masterSpeedVal.textContent = spd;
+          }
+        }
+      };
+    }
+
+    /* ===================== MOTION INDICATOR ===================== */
+    const motFwd  = document.getElementById("mot-fwd");
+    const motBwd  = document.getElementById("mot-bwd");
+    const motCCW  = document.getElementById("mot-ccw");
+    const motCW   = document.getElementById("mot-cw");
+    const motLabel = document.getElementById("motLabel");
+    const gyroBarX = document.getElementById("gyroBarX");
+    const gyroBarY = document.getElementById("gyroBarY");
+    const gyroBarZ = document.getElementById("gyroBarZ");
+
+    function updateGyroBars(gx, gy, gz) {
+      const maxG = 120; // deg/s clamp
+      function pct(v) { return Math.min(100, (Math.abs(v) / maxG) * 100).toFixed(1) + "%"; }
+      if (gyroBarX) gyroBarX.style.height = pct(gx);
+      if (gyroBarY) gyroBarY.style.height = pct(gy);
+      if (gyroBarZ) gyroBarZ.style.height = pct(gz);
+    }
+
+    // Smoothed IMU values for motion indicator
+    let smoothGZ = 0;
+    const GZ_ALPHA = 0.3;
+
+    function updateMotionIndicator(gy, gz, mL, mR) {
+      // Smooth gyroZ yaw-rate for reliable rotation detection
+      smoothGZ = GZ_ALPHA * (gz || 0) + (1 - GZ_ALPHA) * smoothGZ;
+
+      // Thresholds
+      const MOT_THRESH   = 25;   // PWM units — motors must exceed this to count as moving
+      const GZ_THRESH    = 14;   // deg/s yaw rate to count as turning
+
+      [motFwd, motBwd, motCCW, motCW].forEach(el => {
+        if (el) el.className = "mot-arrow";
+      });
+
+      let label = "IDLE";
+      let labelColor = "#aaa";
+
+      // Forward/backward: use motor values — reliable in ALL modes since motorDrive() always updates motL/motR
+      const goingFwd    = ((mL || 0) > MOT_THRESH)  && ((mR || 0) > MOT_THRESH);
+      const goingBwd    = ((mL || 0) < -MOT_THRESH) && ((mR || 0) < -MOT_THRESH);
+      // Turning: use gyroZ yaw rate — works in ALL modes (physical rotation)
+      const turningLeft  = smoothGZ >  GZ_THRESH;
+      const turningRight = smoothGZ < -GZ_THRESH;
+
+      if (turningLeft) {
+        if (motCCW) motCCW.className = "mot-arrow active-yel";
+        if (goingFwd  && motFwd) motFwd.className = "mot-arrow active";
+        if (goingBwd  && motBwd) motBwd.className = "mot-arrow active-red";
+        label = goingFwd ? "FWD + LEFT" : goingBwd ? "BWD + LEFT" : "TURNING LEFT";
+        labelColor = "#ffd54f";
+      } else if (turningRight) {
+        if (motCW) motCW.className = "mot-arrow active-yel";
+        if (goingFwd  && motFwd) motFwd.className = "mot-arrow active";
+        if (goingBwd  && motBwd) motBwd.className = "mot-arrow active-red";
+        label = goingFwd ? "FWD + RIGHT" : goingBwd ? "BWD + RIGHT" : "TURNING RIGHT";
+        labelColor = "#ffd54f";
+      } else if (goingFwd) {
+        if (motFwd) motFwd.className = "mot-arrow active";
+        label = "FORWARD";
+        labelColor = "#00e5ff";
+      } else if (goingBwd) {
+        if (motBwd) motBwd.className = "mot-arrow active-red";
+        label = "BACKWARD";
+        labelColor = "#ff5252";
+      }
+
+      if (motLabel) {
+        motLabel.textContent = label;
+        motLabel.style.color = labelColor;
+      }
+    }
+
+    /* ===================== RESET UI ON DISCONNECT ===================== */
+    function resetUIOnDisconnect() {
+      robotRunning = false;
+      holdActive = false;
+      selectedMode = 0;
+
+      runBtn.textContent = "START";
+      runBtn.classList.remove("running");
+      runState.textContent = "STOPPED";
+
+      hold.classList.remove("active");
+      holdBtn.textContent = "⏸";
+
+      document.querySelectorAll(".modeBtn").forEach(b => b.classList.remove("active"));
+
+      tiltSpan.textContent = "0°";
+      accSpan.textContent = "0";
+      tempSpan.textContent = "--";
+      batSpan.textContent = "--";
+
+      updateLineFollowPanel(0, 0, 0);
+      updateObjFollowPanel(-1, 0, 0);
+      updateObsAvoidPanel(-1, -1, -1);
+      drawRadar(null, null, null);
+
+      clearAllArrows();
+      pcControl.style.display = "none";
+      phoneControl.style.display = "none";
+      radar.style.display = "none";
+      lineFollowPanel.style.display = "none";
+      objFollowPanel.style.display = "none";
+      obsAvoidPanel.style.display = "none";
+      masterSpeedPanel.style.display = "none";
+
+      keyState.w = keyState.a = keyState.s = keyState.d = false;
+
+      console.log("✓ UI reset on disconnect");
+    }
+
+    /* ===================== SEND ===================== */
+    let lastCmd = null;
+    function sendCmd(cmd) {
+      if (cmd === lastCmd) return;
+      lastCmd = cmd;
+
+      if (ws && wsConnected) {
+        try { ws.send(cmd); } catch (e) { console.warn("WS send failed", e); }
+      }
+
+      console.log("CMD ->", cmd);
+
+      const d = new Date();
+      const ms = d.getMilliseconds().toString().padStart(3, '0');
+      const timeStr = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}.${ms}`;
+      txLogData.unshift(`[${timeStr}] ${cmd}`);
+      if (txLogData.length > 50) txLogData.pop();
+      if (txTelemetryLog) txTelemetryLog.textContent = txLogData.join("\n");
+    }
+
+    function resetLastCmd() {
+      lastCmd = null;
+    }
+
+    /* ===================== HELPERS ===================== */
+    function isManual() { return robotRunning && !holdActive && selectedMode === 1; }
+    function isObstacleAvoidance() { return robotRunning && !holdActive && selectedMode === 2; }
+    function isLineFollowing() { return robotRunning && !holdActive && selectedMode === 3; }
+    function isObjectFollowing() { return robotRunning && !holdActive && selectedMode === 4; }
+
+    /* ===================== MODE SELECT ===================== */
+    function selectMode(btn, m) {
+      if (robotRunning || holdActive) {
+        alert("Stop before changing mode");
+        return;
+      }
+      selectedMode = m;
+      document.querySelectorAll(".modeBtn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      sendCmd("MODE:" + m);
+      resetLastCmd();
+
+      updateUI();
+    }
+
+    /* ===================== START / STOP ===================== */
+    function toggleRun() {
+      if (!robotRunning) {
+        if (!selectedMode) { alert("Select a mode"); return; }
+        sendCmd("RUN:1");
+        robotRunning = true;
+        runBtn.textContent = "STOP";
+        runBtn.classList.add("running");
+      } else {
+        sendCmd("RUN:0");
+        robotRunning = false;
+
+        if (holdActive) {
+          holdActive = false;
+          hold.classList.remove("active");
+          holdBtn.textContent = "⏸";
+          sendCmd("SAFE:0");
+        }
+
+        runBtn.textContent = "START";
+        runBtn.classList.remove("running");
+        sendCmd("STOP_MOVE");
+        clearAllArrows();
+        resetLastCmd();
+      }
+      runState.textContent = robotRunning ? "RUNNING" : "STOPPED";
+      updateUI();
+    }
+    runBtn.onclick = toggleRun;
+
+    /* ===================== SAFE STOP ===================== */
+    holdBtn.onclick = () => {
+      if (!robotRunning || selectedMode === 0) return;
+
+      holdActive = !holdActive;
+      hold.classList.toggle("active", holdActive);
+      holdBtn.textContent = holdActive ? "▶" : "⏸";
+
+      sendCmd("SAFE:" + (holdActive ? "1" : "0"));
+
+      if (holdActive) {
+        sendCmd("STOP_MOVE");
+      }
+
+      resetLastCmd();
+      updateUI();
+    };
+
+    /* ===================== UI UPDATE ===================== */
+    function updateUI() {
+      // Phone Control toggle: only active in Manual mode
+      if (selectedMode === 1) {
+        uiToggle.disabled = false;
+        uiToggle.parentElement.style.opacity = "1";
+        uiToggle.parentElement.style.pointerEvents = "auto";
+      } else {
+        uiToggle.disabled = true;
+        uiToggle.parentElement.style.opacity = "0.4";
+        uiToggle.parentElement.style.pointerEvents = "none";
+        if (uiToggle.checked) uiToggle.checked = false;
+      }
+
+      if (isManual()) {
+        if (uiToggle.checked) {
+          pcControl.style.display = "none";
+          phoneControl.style.display = "flex";
+        } else {
+          pcControl.style.display = "flex";
+          phoneControl.style.display = "none";
+        }
+      } else {
+        pcControl.style.display = "none";
+        phoneControl.style.display = "none";
+      }
+
+      // Telemetry visibility
+      if (telemetryPanel && telemetryToggle) {
+        telemetryPanel.style.display = telemetryToggle.checked ? "block" : "none";
+      }
+
+      // Radar Checkbox state
+      if (isManual() || isLineFollowing()) {
+        radarToggle.disabled = false;
+        radarToggle.parentElement.style.opacity = "1";
+      } else {
+        if (radarToggle.checked) {
+          radarToggle.checked = false;
+          sendCmd("RADAR:0");
+        }
+        radarToggle.disabled = true;
+        radarToggle.parentElement.style.opacity = "0.4";
+      }
+
+      // Radar canvas + manual panel visibility
+      const radarActive = (isManual() || isLineFollowing()) && radarToggle.checked;
+      if (radarActive) {
+        radar.style.display = "block";
+        manRadarPanel.style.display = "block";
+      } else {
+        radar.style.display = "none";
+        manRadarPanel.style.display = "none";
+        // Turn off manual mode if radar hidden
+        if (manualRadarOn) {
+          manualRadarOn = false;
+          sendCmd("SERVO_MAN:0");
+          manRadarBtn.textContent = "Manual OFF";
+          manRadarBtn.classList.remove("active");
+        }
+      }
+
+      // Safe stop button visibility
+      if (robotRunning) {
+        hold.style.display = "flex";
+      } else {
+        hold.style.display = "none";
+      }
+
+      // Obstacle avoidance panel visible ONLY in obstacle avoidance (2)
+      if (isObstacleAvoidance()) {
+        obsAvoidPanel.style.display = "block";
+      } else {
+        obsAvoidPanel.style.display = "none";
+      }
+
+      // Line follow panel visible ONLY in line following (3)
+      if (isLineFollowing()) {
+        lineFollowPanel.style.display = "block";
+      } else {
+        lineFollowPanel.style.display = "none";
+      }
+
+      // Object follow panel visible ONLY in object following (4)
+      if (isObjectFollowing()) {
+        objFollowPanel.style.display = "block";
+      } else {
+        objFollowPanel.style.display = "none";
+      }
+
+      // Speed panel: show if any active mode
+      masterSpeedPanel.style.display = (selectedMode !== 0) ? "block" : "none";
+
+      document.querySelectorAll(".arrow span").forEach(s => {
+        s.style.display = wasdToggle.checked ? "block" : "none";
+      });
+
+      if (!((isManual() || isLineFollowing()) && radarToggle.checked)) {
+        drawRadar(null, null, null);
+      }
+    }
+
+    /* ===================== MANUAL RADAR ===================== */
+    const manRadarPanel  = document.getElementById("manRadarPanel");
+    const manRadarBtn    = document.getElementById("manRadarBtn");
+    const manDistVal     = document.getElementById("manDistVal");
+    const manAngleLbl    = document.getElementById("manAngleLbl");
+    const manAngleSlider = document.getElementById("manAngleSlider");
+    let manualRadarOn = false;
+    let manAngleSendTimer = null;
+
+    function toggleManualRadar() {
+      manualRadarOn = !manualRadarOn;
+      sendCmd("SERVO_MAN:" + (manualRadarOn ? "1" : "0"));
+      manRadarBtn.textContent = manualRadarOn ? "Manual ON" : "Manual OFF";
+      manRadarBtn.classList.toggle("active", manualRadarOn);
+      // Enable/disable slider with opacity feedback
+      manAngleSlider.disabled = !manualRadarOn;
+      document.getElementById("manAngleRow").style.opacity = manualRadarOn ? "1" : "0.4";
+      if (manualRadarOn) {
+        // Send reversed angle: slider right = 30°, slider left = 150°
+        const ang = 180 - parseInt(manAngleSlider.value);
+        manAngleLbl.textContent = ang + "\u00b0";
+        sendCmd("SERVO_ANGLE:" + ang);
+      } else {
+        manDistVal.innerHTML = "--<span>cm</span>";
+      }
+    }
+
+    if (manAngleSlider) {
+      manAngleSlider.addEventListener("input", () => {
+        // Reverse: slider at max (150) = 30° servo, slider at min (30) = 150° servo
+        const ang = 180 - parseInt(manAngleSlider.value);
+        manAngleLbl.textContent = ang + "\u00b0";
+        clearTimeout(manAngleSendTimer);
+        manAngleSendTimer = setTimeout(() => {
+          if (manualRadarOn) sendCmd("SERVO_ANGLE:" + ang);
+        }, 80);
+      });
+    }
+
+    /* ===================== ARROW VISUAL ===================== */
+    function activateArrow(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.add("active");
+    }
+    function clearAllArrows() {
+      document.querySelectorAll(".arrow").forEach(a => a.classList.remove("active"));
+    }
+
+    function updateArrowVisual(cmd) {
+      clearAllArrows();
+      if (!cmd) return;
+      if (cmd.includes("W")) activateArrow("up");
+      if (cmd.includes("A")) activateArrow("left");
+      if (cmd.includes("S")) activateArrow("down");
+      if (cmd.includes("D")) activateArrow("right");
+    }
+
+    /* ===================== PC D-PAD ===================== */
+    (function attachArrowEvents() {
+      const map = { up: "W", left: "A", down: "S", right: "D" };
+      Object.keys(map).forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        el.addEventListener("mousedown", ev => {
+          if (!isManual() || uiToggle.checked) { ev.preventDefault(); return; }
+          updateArrowVisual(map[id]);
+          sendCmd(map[id]);
+        });
+        el.addEventListener("mouseup", ev => {
+          if (!isManual() || uiToggle.checked) { ev.preventDefault(); return; }
+          clearAllArrows();
+          sendCmd("STOP_MOVE");
+          resetLastCmd();
+        });
+        el.addEventListener("mouseleave", ev => {
+          clearAllArrows();
+          sendCmd("STOP_MOVE");
+          resetLastCmd();
+        });
+
+        el.addEventListener("touchstart", ev => {
+          ev.preventDefault();
+          if (!isManual() || uiToggle.checked) return;
+          updateArrowVisual(map[id]);
+          sendCmd(map[id]);
+        }, { passive: false });
+        el.addEventListener("touchend", ev => {
+          ev.preventDefault();
+          if (!isManual() || uiToggle.checked) return;
+          clearAllArrows();
+          sendCmd("STOP_MOVE");
+          resetLastCmd();
+        }, { passive: false });
+      });
+    })();
+
+    /* ===================== KEYBOARD ===================== */
+    const keyState = { w: false, a: false, s: false, d: false };
+
+    function sendKeyCombo() {
+      if (!isManual() || uiToggle.checked) return;
+
+      let cmd = "";
+
+      if (keyState.w && keyState.s) {
+        cmd = "STOP_MOVE";
+      } else {
+        if (keyState.w) cmd += "W";
+        if (keyState.s) cmd += "S";
+        if (keyState.a) cmd += "A";
+        if (keyState.d) cmd += "D";
+      }
+
+      if (cmd) {
+        sendCmd(cmd);
+        updateArrowVisual(cmd);
+      } else {
+        sendCmd("STOP_MOVE");
+        clearAllArrows();
+      }
+    }
+
+    document.addEventListener("keydown", e => {
+      if (e.repeat) return;
+      const k = e.key.toLowerCase();
+      if (!(k in keyState)) return;
+      keyState[k] = true;
+      sendKeyCombo();
+    });
+
+    document.addEventListener("keyup", e => {
+      const k = e.key.toLowerCase();
+      if (!(k in keyState)) return;
+      keyState[k] = false;
+      sendKeyCombo();
+    });
+
+    /* ===================== JOYSTICK ===================== */
+    (function initJoystick() {
+      const joy = document.getElementById("joystick");
+      const stick = document.getElementById("stick");
+      const DEAD = 20;
+      let activeCmd = null;
+
+      function radius() { return joy.clientWidth / 2; }
+
+      function setStickPos(x, y) {
+        stick.style.left = x + "px";
+        stick.style.top = y + "px";
+        stick.style.transform = "";
+      }
+
+      function resetStick() {
+        stick.style.left = "50%";
+        stick.style.top = "50%";
+        stick.style.transform = "translate(-50%,-50%)";
+        activeCmd = null;
+        sendCmd("STOP_MOVE");
+        resetLastCmd();
+      }
+
+      function handle(px, py) {
+        const R = radius();
+        const dx = px - R;
+        const dy = py - R;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < DEAD) {
+          resetStick();
+          return;
+        }
+
+        setStickPos(
+          R + (dx / dist) * R * 0.55,
+          R + (dy / dist) * R * 0.55
+        );
+
+        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        let sector = Math.round(angle / 45);
+        if (sector === -4) sector = 4;
+
+        let cmd;
+        switch (sector) {
+          case 0: cmd = "D"; break;
+          case 1: cmd = "SD"; break;
+          case 2: cmd = "S"; break;
+          case 3: cmd = "SA"; break;
+          case 4: cmd = "A"; break;
+          case -3: cmd = "WA"; break;
+          case -2: cmd = "W"; break;
+          case -1: cmd = "WD"; break;
+          default: cmd = "A";
+        }
+
+        if (cmd !== activeCmd) {
+          activeCmd = cmd;
+          sendCmd(cmd);
+        }
+      }
+
+      joy.addEventListener("touchstart", e => {
+        if (!isManual() || !uiToggle.checked) return;
+        e.preventDefault();
+        const r = joy.getBoundingClientRect();
+        handle(e.touches[0].clientX - r.left, e.touches[0].clientY - r.top);
+      }, { passive: false });
+
+      joy.addEventListener("touchmove", e => {
+        if (!isManual() || !uiToggle.checked) return;
+        e.preventDefault();
+        const r = joy.getBoundingClientRect();
+        handle(e.touches[0].clientX - r.left, e.touches[0].clientY - r.top);
+      }, { passive: false });
+
+      joy.addEventListener("touchend", e => {
+        if (!isManual() || !uiToggle.checked) return;
+        e.preventDefault();
+        resetStick();
+      }, { passive: false });
+
+      let mouseDown = false;
+      joy.addEventListener("mousedown", ev => {
+        if (!isManual() || !uiToggle.checked) return;
+        mouseDown = true;
+        const r = joy.getBoundingClientRect();
+        handle(ev.clientX - r.left, ev.clientY - r.top);
+      });
+      window.addEventListener("mousemove", ev => {
+        if (!mouseDown) return;
+        const r = joy.getBoundingClientRect();
+        handle(ev.clientX - r.left, ev.clientY - r.top);
+      });
+      window.addEventListener("mouseup", ev => {
+        if (!mouseDown) return;
+        mouseDown = false;
+        resetStick();
+      });
+    })();
+
+    /* ===================== RADAR CANVAS ===================== */
+    function drawRadar(L, C, R, manDist, manAngle) {
+      const W = 340, H = 200;
+      radar.width = W;
+      radar.height = H;
+      const ctx = radar.getContext("2d");
+      ctx.clearRect(0, 0, W, H);
+
+      const cx = W / 2;
+      const cy = H - 16;
+      const maxR = 150;
+
+      ctx.save();
+
+      // — Concentric range rings —
+      const rings = [0.25, 0.5, 0.75, 1.0];
+      const rangeLabels = ["40", "75", "110", "150"];
+      rings.forEach((r, i) => {
+        const radius = maxR * r;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, Math.PI, 0, false);
+        ctx.strokeStyle = `rgba(0, 229, 255, ${0.06 + i * 0.03})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Range label on right side
+        const lx = cx + Math.cos(-0.1) * radius + 4;
+        const ly = cy + Math.sin(-0.1) * radius;
+        ctx.fillStyle = "rgba(0, 229, 255, 0.25)";
+        ctx.font = "9px Segoe UI, sans-serif";
+        ctx.fillText(rangeLabels[i] + "cm", lx, ly);
+      });
+
+      // — Radial guide lines —
+      const guideAngles = [150, 120, 90, 60, 30];
+      guideAngles.forEach(deg => {
+        const a = deg * Math.PI / 180;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(a) * maxR, cy - Math.sin(a) * maxR);
+        ctx.strokeStyle = "rgba(0, 229, 255, 0.06)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+
+      // — Bottom baseline —
+      ctx.beginPath();
+      ctx.moveTo(cx - maxR - 10, cy);
+      ctx.lineTo(cx + maxR + 10, cy);
+      ctx.strokeStyle = "rgba(0, 229, 255, 0.15)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // — Draw scan line with detection dot —
+      function drawScanLine(angleDeg, dist, color, label, isMain = false) {
+        if (dist === null || dist === undefined || dist < 0) return;
+        const a = angleDeg * Math.PI / 180;
+        const v = Math.min(dist / 150, 1.0) * maxR;
+
+        // Endpoint
+        const ex = cx + Math.cos(a) * v;
+        const ey = cy - Math.sin(a) * v;
+
+        // Full guide line (faint)
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(a) * maxR, cy - Math.sin(a) * maxR);
+        ctx.strokeStyle = color + (isMain ? "33" : "18");
+        ctx.lineWidth = isMain ? 3 : 2;
+        ctx.stroke();
+
+        // Active scan line (gradient)
+        const grad = ctx.createLinearGradient(cx, cy, ex, ey);
+        grad.addColorStop(0, color + "00");
+        grad.addColorStop(0.4, color + "66");
+        grad.addColorStop(1, color);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(ex, ey);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = isMain ? 5 : 3;
+        ctx.lineCap = "round";
+        ctx.stroke();
+
+        // Glow halo around detection point
+        const glow = ctx.createRadialGradient(ex, ey, 0, ex, ey, isMain ? 20 : 14);
+        glow.addColorStop(0, color + "88");
+        glow.addColorStop(0.5, color + "22");
+        glow.addColorStop(1, color + "00");
+        ctx.beginPath();
+        ctx.arc(ex, ey, isMain ? 20 : 14, 0, Math.PI * 2);
+        ctx.fillStyle = glow;
+        ctx.fill();
+
+        // Detection dot
+        ctx.beginPath();
+        ctx.arc(ex, ey, isMain ? 7 : 5, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(ex, ey, isMain ? 7 : 5, 0, Math.PI * 2);
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Distance label
+        ctx.fillStyle = "#fff";
+        ctx.font = isMain ? "bold 13px Segoe UI, sans-serif" : "bold 11px Segoe UI, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(dist + "cm", ex, ey - (isMain ? 18 : 14));
+
+        // Direction label
+        ctx.fillStyle = color + "bb";
+        ctx.font = isMain ? "bold 10px Segoe UI, sans-serif" : "9px Segoe UI, sans-serif";
+        ctx.fillText(label, ex, ey - (isMain ? 32 : 24));
+      }
+
+      if (manualRadarOn && manDist !== undefined && manDist !== null) {
+        // Manual mode: Show single primary beam
+        drawScanLine(manAngle || 90, manDist, "#00E5FF", "MANUAL", true);
+      } else {
+        // Auto mode: L = servo at 150° (left), R = servo at 30° (right)
+        drawScanLine(150, L, "#448AFF", "LEFT");
+        drawScanLine(90, C, "#00E5FF", "CENTER");
+        drawScanLine(30, R, "#FF5252", "RIGHT");
+      }
+
+      // — Center origin dot —
+      const originGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 8);
+      originGlow.addColorStop(0, "rgba(0, 229, 255, 0.6)");
+      originGlow.addColorStop(1, "rgba(0, 229, 255, 0)");
+      ctx.beginPath();
+      ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+      ctx.fillStyle = originGlow;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+      ctx.fillStyle = "#00E5FF";
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    /* ===================== LINE FOLLOW PANEL ===================== */
+    function updateLineFollowPanel(irL, irC, irR) {
+      // Sensors: HIGH (1) = line detected, LOW (0) = no line
+      const lActive = (irL === 1);
+      const cActive = (irC === 1);
+      const rActive = (irR === 1);
+
+      lfLeft.classList.toggle("active", lActive);
+      lfCenter.classList.toggle("active", cActive);
+      lfRight.classList.toggle("active", rActive);
+
+      lfLeft.textContent = lActive ? "●" : "○";
+      lfCenter.textContent = cActive ? "●" : "○";
+      lfRight.textContent = rActive ? "●" : "○";
+
+      // Re-add labels
+      function addLabel(el, text) {
+        let lbl = el.querySelector('.lf-label');
+        if (!lbl) {
+          lbl = document.createElement('span');
+          lbl.className = 'lf-label';
+          el.appendChild(lbl);
+        }
+        lbl.textContent = text;
+      }
+      addLabel(lfLeft, 'LEFT');
+      addLabel(lfCenter, 'CENTER');
+      addLabel(lfRight, 'RIGHT');
+
+      // Determine state label
+      let state = "IDLE";
+      if (!isLineFollowing()) {
+        state = "IDLE";
+      } else if (cActive && !lActive && !rActive) state = "▶ FORWARD";
+      else if (cActive && lActive && !rActive) state = "↰ SHARP LEFT";
+      else if (cActive && !lActive && rActive) state = "↱ SHARP RIGHT";
+      else if (cActive && lActive && rActive) state = "◉ STOP";
+      else if (!cActive && lActive && !rActive) state = "⟵ LEFT";
+      else if (!cActive && !lActive && rActive) state = "⟶ RIGHT";
+      else if (!cActive && !lActive && !rActive) state = "⚠ LOST / STOP";
+
+      lfState.textContent = state;
+      lfState.classList.toggle("lost", state.includes("LOST"));
+    }
+
+    /* ===================== OBJECT FOLLOW PANEL ===================== */
+    function drawObjGauge(distance) {
+      const canvas = ofGauge;
+      const ctx = canvas.getContext("2d");
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      const cx = W / 2;
+      const cy = H - 5;
+      const radius = 85;
+      const maxDist = 30;  // max display range in cm
+
+      // Background arc
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, Math.PI, 0, false);
+      ctx.lineWidth = 12;
+      ctx.strokeStyle = "#1a1e28";
+      ctx.stroke();
+
+      // Colored arc based on distance
+      if (distance > 0) {
+        const ratio = Math.min(distance / maxDist, 1.0);
+        const endAngle = Math.PI + (Math.PI * ratio);
+
+        // Color gradient: close=red, mid=yellow, far=green
+        let color;
+        if (distance <= 5) color = "#ff5252";
+        else if (distance <= 15) color = "#ffb300";
+        else color = "#00c853";
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, Math.PI, endAngle, false);
+        ctx.lineWidth = 10;
+        ctx.strokeStyle = color;
+        ctx.lineCap = "round";
+        ctx.stroke();
+
+        // Glow
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, Math.PI, endAngle, false);
+        ctx.lineWidth = 14;
+        ctx.strokeStyle = color + "33";
+        ctx.stroke();
+      }
+
+      // Tick marks
+      for (let i = 0; i <= 6; i++) {
+        const a = Math.PI + (Math.PI * i / 6);
+        const x1 = cx + Math.cos(a) * (radius - 18);
+        const y1 = cy + Math.sin(a) * (radius - 18);
+        const x2 = cx + Math.cos(a) * (radius - 8);
+        const y2 = cy + Math.sin(a) * (radius - 8);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = "#445";
+        ctx.lineCap = "butt";
+        ctx.stroke();
+
+        // Labels
+        const labelR = radius - 26;
+        const lx = cx + Math.cos(a) * labelR;
+        const ly = cy + Math.sin(a) * labelR;
+        ctx.fillStyle = "#667";
+        ctx.font = "9px Segoe UI, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText((i * 5) + "", lx, ly + 3);
+      }
+    }
+
+    function updateObjFollowPanel(dist, irObjL, irObjR) {
+      // Distance
+      if (dist !== null && dist !== undefined && dist > 0) {
+        ofDistVal.textContent = dist;
+      } else {
+        ofDistVal.textContent = "--";
+      }
+
+      drawObjGauge(dist > 0 ? dist : -1);
+
+      // IR sensors: LOW (0) = object detected
+      const leftDetected = (irObjL === 0);
+      const rightDetected = (irObjR === 0);
+
+      ofIrLeft.classList.toggle("detected", leftDetected);
+      ofIrRight.classList.toggle("detected", rightDetected);
+
+      ofIrLeft.textContent = leftDetected ? "◀" : "◁";
+      ofIrRight.textContent = rightDetected ? "▶" : "▷";
+
+      // State label
+      let state = "IDLE";
+      if (!isObjectFollowing()) {
+        state = "IDLE";
+      } else if (leftDetected && rightDetected) {
+        state = dist > 0 && dist <= 15 ? "▶ TRACKING" : "▶ APPROACHING";
+      } else if (leftDetected) {
+        state = "↰ ARC LEFT";
+      } else if (rightDetected) {
+        state = "↱ ARC RIGHT";
+      } else if (dist > 0 && dist <= 15) {
+        state = "📡 ULTRA TRACK";
+      } else {
+        state = "⚠ SEARCHING";
+      }
+
+      ofState.textContent = state;
+      ofState.classList.remove("tracking", "lost");
+      if (state.includes("TRACKING") || state.includes("ARC") || state.includes("ULTRA")) {
+        ofState.classList.add("tracking");
+      } else if (state.includes("SEARCHING")) {
+        ofState.classList.add("lost");
+      }
+    }
+
+    /* ===================== OBSTACLE AVOID PANEL ===================== */
+    function updateObsAvoidPanel(distL, distC, distR) {
+      function updateSensor(val, distEl, barEl) {
+        if (val === null || val === undefined || val < 0 || val === 999) {
+          distEl.textContent = (val === 999) ? "MAX" : "--";
+          if (val === 999) {
+            barEl.style.height = "100%";
+            barEl.style.background = "#00c853";
+          } else {
+            barEl.style.height = "0%";
+            barEl.style.background = "#333";
+          }
+          return;
+        }
+        distEl.textContent = val;
+
+        const MAX_DIST = 60;
+        let pct = (val / MAX_DIST) * 100;
+        if (pct > 100) pct = 100;
+        if (pct < 5) pct = 5; // tiny sliver so it's visible
+
+        barEl.style.height = pct + "%";
+
+        if (val <= 18) {
+          barEl.style.background = "linear-gradient(0deg, #d32f2f, #ff5252)";
+        } else if (val <= 30) {
+          barEl.style.background = "linear-gradient(0deg, #f57c00, #ffb300)";
+        } else {
+          barEl.style.background = "linear-gradient(0deg, #00c853, #69f0ae)";
+        }
+      }
+
+      updateSensor(distL, oaDistL, oaBarL);
+      updateSensor(distC, oaDistC, oaBarC);
+      updateSensor(distR, oaDistR, oaBarR);
+
+      // Simple state logic for display
+      let state = "IDLE";
+      if (!isObstacleAvoidance()) {
+        state = "IDLE";
+      } else {
+        const dC = (distC > 0) ? distC : 999;
+        const dL = (distL > 0) ? distL : 999;
+        const dR = (distR > 0) ? distR : 999;
+        if (dC <= 18 || dL <= 18 || dR <= 18) state = "🛑 OBSTACLE CLOSE";
+        else if (dC <= 30 || dL <= 30 || dR <= 30) state = "⚠️ OBSTACLE NEAR";
+        else state = "✅ PATH CLEAR";
+      }
+      oaState.textContent = state;
+    }
+
+    /* ===================== MASTER SPEED SLIDER ===================== */
+    let gSliderDragging = false;
+    let gSliderDebounce = null;
+
+    masterSpeedSlider.addEventListener("input", () => {
+      gSliderDragging = true;
+      masterSpeedVal.textContent = masterSpeedSlider.value;
+      clearTimeout(gSliderDebounce);
+      gSliderDebounce = setTimeout(() => {
+        sendCmd("SPEED:" + masterSpeedSlider.value);
+        resetLastCmd();
+      }, 100);
+    });
+    masterSpeedSlider.addEventListener("change", () => {
+      gSliderDragging = false;
+      sendCmd("SPEED:" + masterSpeedSlider.value);
+      resetLastCmd();
+    });
+
+    /* ===================== INIT ===================== */
+    initWebSocket();
+    uiToggle.onchange = wasdToggle.onchange = telemetryToggle.onchange = updateUI;
+    radarToggle.addEventListener('change', () => {
+      sendCmd("RADAR:" + (radarToggle.checked ? "1" : "0"));
+      updateUI();
+    });
+    updateUI();
+  </script>
+</body>
+
+</html>

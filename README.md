@@ -31,6 +31,11 @@ An advanced, ESP32-based mobile robot platform featuring **four distinct operati
 
 The **Multi-Mode Navigation Rover** is a versatile robotics platform engineered for dynamic environments. Built on an ESP32 microcontroller with a dual-core FreeRTOS architecture, the rover separates non-blocking network communication from hard real-time control loops. Users control the rover and monitor sensor streams—including IMU orientation, battery voltage, motor states, proximity, and a live servo-actuated radar sweep—directly from any desktop or mobile browser.
 
+<p align="center">
+  <img src="assets/rover_front.png" width="48%" alt="Multi-Mode Navigation Rover Front View" />
+  <img src="assets/rover_side.png" width="48%" alt="Multi-Mode Navigation Rover Side View" />
+</p>
+
 ---
 
 ## 🎯 Key Objectives
